@@ -2,6 +2,7 @@
   "name": "heig_github_api",
   "version": "1.0.0",
   "scripts": {
+    "start": "node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
