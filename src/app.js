@@ -1,0 +1,1 @@
+console.log('ta maman elle pue');
