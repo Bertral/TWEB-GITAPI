@@ -1,8 +1,9 @@
 const gql = require('graphql-request');
-const jsonfile = require('jsonfile');
 const request = require('superagent');
+const GitHubPublisher = require('github-publish');
 
 const API_KEY = process.env.GITHUB_API_KEY;
+const publisher = new GitHubPublisher(API_KEY, 'Farenjihn', 'ossroulette');
 
 const client = new gql.GraphQLClient('https://api.github.com/graphql', {
   headers: {
@@ -16,11 +17,13 @@ const variables = {
     const date = new Date();
     date.setDate(date.getDate() - 30);
 
+    // Get the date as YYYY-MM-DD
     return date.toISOString().split('T')[0];
   })()}`,
   number: 100,
 };
 
+// GraphQL query
 const query = `query getRepositories($type: SearchType!, $query: String!, $number: Int!) {
   search(type: $type, query: $query, first: $number) {
     repositoryCount
@@ -97,6 +100,7 @@ function processJSON(json) {
 
   const promises = [];
 
+  // Reformat JSON a bit
   for (let i = 0; i < json.nodes.length; i += 1) {
     const node = json.nodes[i];
     const repo = {};
@@ -122,9 +126,9 @@ function processJSON(json) {
     promises.push(fetchREADME(repo.fullname));
   }
 
+  // Wait for all REST queries to give a result back
+  // and then proceed
   Promise.all(promises).then((array) => {
-    const file = '/tmp/data.json';
-
     for (let j = 0; j < array.length; j += 1) {
       const element = array[j];
 
@@ -135,10 +139,37 @@ function processJSON(json) {
       }
     }
 
-    jsonfile.writeFile(file, data);
+    // forced to do this because our file is heavy and the standard GET on
+    // /repo/.../contents failed, our json data file is > 1MB so we get the
+    // tree instead
+    request
+      .get('https://api.github.com/repos/Farenjihn/ossroulette/git/trees/master:docs')
+      .auth('Farenjihn', API_KEY)
+      .then((res) => {
+        const { tree } = res.body;
+        let sha = null;
+
+        for (let i = 0; i < tree.length; i += 1) {
+          const child = tree[i];
+
+          if (child.path === 'data.json') {
+            sha = child.sha;
+            break;
+          }
+        }
+
+        const options = {
+          force: true,
+          message: 'New data for roulette',
+          sha,
+        };
+
+        publisher.publish('docs/data.json', JSON.stringify(data), options);
+      });
   });
 }
 
+// Entrypoint
 client.request(query, variables).then((data) => {
   processJSON(data.search);
 });
