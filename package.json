@@ -1,13 +1,25 @@
 {
   "name": "heig_github_api",
   "version": "1.0.0",
+  "watch": {
+    "lint": "{src,test}/*.js"
+  },
   "scripts": {
     "start": "node src/agent.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint --max-warnings 0 {src,test}/*.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "npm-watch"
   },
   "author": "",
   "dependencies": {
-    "superagent": "3.6.1",
-    "superagent-prefix": "0.0.2"
+    "graphql-request": "^1.4.0",
+    "jsonfile": "^4.0.0",
+    "superagent": "^3.6.3"
+  },
+  "devDependencies": {
+    "eslint": "^4.9.0",
+    "eslint-config-airbnb": "^15.1.0",
+    "eslint-plugin-import": "^2.7.0",
+    "npm-watch": "^0.3.0"
   }
 }

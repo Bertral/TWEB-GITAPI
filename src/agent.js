@@ -1,10 +1,144 @@
+const gql = require('graphql-request');
+const jsonfile = require('jsonfile');
 const request = require('superagent');
-const prefix = require('superagent-prefix')('https://api.github.com')
 
-request
-  .get('/repos/c-meier/HEIG-2017-PDG-WORDOFF/collaborators')
-  .use(prefix)
-  .end((err, res) => {
-    // Calling the end function will send the request
-    console.log(res);
+const API_KEY = process.env.GITHUB_API_KEY;
+
+const client = new gql.GraphQLClient('https://api.github.com/graphql', {
+  headers: {
+    Authorization: `bearer ${API_KEY}`,
+  },
+});
+
+const variables = {
+  type: 'REPOSITORY',
+  query: `stars:100..5000 pushed:>${(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+
+    return date.toISOString().split('T')[0];
+  })()}`,
+  number: 100,
+};
+
+const query = `query getRepositories($type: SearchType!, $query: String!, $number: Int!) {
+  search(type: $type, query: $query, first: $number) {
+    repositoryCount
+    nodes {
+      ... on Repository {
+        url
+        nameWithOwner
+        license
+        stargazers {
+          totalCount
+        }
+        languages(first: 3) {
+          edges {
+            node {
+              name
+            }
+            size
+          }
+        }
+        repositoryTopics(first: 5) {
+          nodes {
+            topic {
+              name
+            }
+          }
+        }
+        defaultBranchRef {
+          target {
+            ... on Commit {
+              history(first: 20) {
+                nodes {
+                  committedDate
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+
+function fetchREADME(fullname) {
+  return request
+    .get(`https://api.github.com/repos/${fullname}/readme`)
+    .auth('Farenjihn', API_KEY)
+    .accept('application/vnd.github.v3.html')
+    .buffer(true)
+    .parse((res, fn) => {
+      res.text = '';
+      res.setEncoding('utf8');
+
+      res.on('data', (chunk) => {
+        res.text += chunk;
+      });
+
+      res.on('end', () => {
+        let body = null;
+
+        try {
+          body = res.text;
+        } finally {
+          fn(null, body);
+        }
+      });
+    })
+    .catch(() => null);
+}
+
+function processJSON(json) {
+  const data = {};
+  data.count = json.repositoryCount;
+  data.repositories = [];
+
+  const promises = [];
+
+  for (let i = 0; i < json.nodes.length; i += 1) {
+    const node = json.nodes[i];
+    const repo = {};
+
+    repo.url = node.url;
+    repo.fullname = node.nameWithOwner;
+    repo.license = node.license;
+    repo.stars = node.stargazers.totalCount;
+    repo.topics = node.repositoryTopics.nodes;
+    repo.commits = node.defaultBranchRef.target.history.nodes;
+
+    repo.languages = [];
+
+    for (let j = 0; j < node.languages.edges.length; j += 1) {
+      const language = node.languages.edges[j];
+      repo.languages.push({
+        name: language.node.name,
+        value: language.size,
+      });
+    }
+
+    data.repositories.push(repo);
+    promises.push(fetchREADME(repo.fullname));
+  }
+
+  Promise.all(promises).then((array) => {
+    const file = '/tmp/data.json';
+
+    for (let j = 0; j < array.length; j += 1) {
+      const element = array[j];
+
+      if (element !== null) {
+        data.repositories[j].readme = element.body;
+      } else {
+        data.repositories[j].readme = null;
+      }
+    }
+
+    jsonfile.writeFile(file, data);
   });
+}
+
+client.request(query, variables).then((data) => {
+  processJSON(data.search);
+});
