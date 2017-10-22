@@ -4,7 +4,7 @@
 ## About
 This repository hosts the agent used as backend for the website available [here](https://farenjihn.github.io/ossroulette/)
 
-This project uses a few dependencies through `nodejs` to detch data from the github API (both REST and GraphQL) and then publish it for the app by pushing it on the repository. This agent is deployed on heroku and runs every hour.
+This project uses a few dependencies through `nodejs` to fetch data from the github API (both REST and GraphQL) and then publish it for the frontend app. This agent is deployed on heroku and runs every hour.
 
 This repository only contains the agent for the application. You can find the frontend [there](https://github.com/Farenjihn/ossroulette).
 
