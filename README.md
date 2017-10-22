@@ -28,7 +28,7 @@ This will fetch the data and push it to the frontend repository.
 ## Why GraphQL
 The REST API (v3) provided by github is awesome but unfortunately, we would have needed to do a **lot** of queries to get the same amount of informations that we currently fetch using GraphQL. As github limits us to 5000 queries per hour, this had a negative impact on our velocity when trying to fix bugs and change details in the implementation as we would get blocked quite quickly and would have to wait for the rate limit to grant us some space.
 
-Unfortunately the GraphQL API does not erfectly match the REST API's functionalities and so we had to use the REST API to get a rendered README to display in the app.
+Unfortunately the GraphQL API does not perfectly match the REST API's functionalities and so we had to use the REST API to get a rendered README to display in the app.
 
 ## Contribute
 If you wish to contribute, please fork and create a pull request to merge your changes.
